@@ -1,74 +1,157 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React from "react";
+import {
+  Dimensions,
+  StyleSheet,
+  View,
+  ImageSourcePropType,
+  TouchableWithoutFeedback,
+} from "react-native";
+import Animated, {
+  Extrapolation,
+  interpolate,
+  SharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+const { width: wWidth, height: wHeight } = Dimensions.get("window");
+const ASPECT_RATIO = 3 / 5;
+const IMAGE_WIDTH = wWidth * 0.7;
+const IMAGE_HEIGHT = wHeight * ASPECT_RATIO;
+const DEFAULT_SPACING = 20;
+
+type ImageType = {
+  source: ImageSourcePropType;
+  offset: SharedValue<number>;
+  index: number;
+};
+
+function ImageItem(props: ImageType) {
+  const { source, offset, index } = props;
+  const isExpanded = useSharedValue(false);
+
+  const imageStyle = useAnimatedStyle(() => {
+    //SCROLL SCALING
+    const scale = interpolate(
+      offset.value,
+      [index - 1, index, index + 1],
+      [1, 1.3, 1],
+      Extrapolation.CLAMP,
+    );
+
+    // EXPAND
+    const height = isExpanded.value
+      ? withTiming(wHeight * 0.7)
+      : withTiming(IMAGE_HEIGHT);
+
+    const width = isExpanded.value
+      ? withTiming(wWidth * 0.9)
+      : withTiming(IMAGE_WIDTH);
+
+    return {
+      transform: [{ scale }],
+      width,
+      height,
+    };
+  });
+
+  return (
+    <TouchableWithoutFeedback
+      onPress={() => {
+        isExpanded.value = !isExpanded.value;
+      }}
+    >
+      <View style={styles.imageContainer}>
+        <Animated.Image
+          source={source}
+          style={[styles.image, imageStyle]}
+          resizeMode="cover"
+        />
+      </View>
+    </TouchableWithoutFeedback>
+  );
+}
+
+const ITEMS = [
+  {
+    id: "e",
+    source: require("@/assets/images/image-1.jpg"),
+  },
+  {
+    id: "2",
+    source: require("@/assets/images/image-2.jpg"),
+  },
+  {
+    id: "3",
+    source: require("@/assets/images/image-3.jpg"),
+  },
+  {
+    id: "4",
+    source: require("@/assets/images/image-4.jpg"),
+  },
+  {
+    id: "5",
+    source: require("@/assets/images/image-5.jpg"),
+  },
+];
 
 export default function HomeScreen() {
+  const offset = useSharedValue(0);
+  const expandedIndex = useSharedValue(-1);
+
+  const setExpandedIndex = (index: number) => {
+    expandedIndex.value = expandedIndex.value === index ? -1 : index; // Toggle
+  };
+
+  const onScroll = useAnimatedScrollHandler((event) => {
+    offset.value = event.contentOffset.x / (IMAGE_WIDTH + DEFAULT_SPACING);
+  });
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <View style={styles.container}>
+      <Animated.FlatList
+        data={ITEMS}
+        horizontal
+        keyExtractor={(item) => item.id}
+        renderItem={({ item, index }) => (
+          <ImageItem source={item.source} offset={offset} index={index} />
+        )}
+        snapToInterval={IMAGE_WIDTH + DEFAULT_SPACING}
+        decelerationRate="fast"
+        contentContainerStyle={styles.listContent}
+        style={styles.list}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        showsHorizontalScrollIndicator={false}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#000",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  listContent: {
+    gap: DEFAULT_SPACING,
+    paddingRight: DEFAULT_SPACING,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  list: {
+    flexGrow: 0,
+  },
+  imageContainer: {
+    width: IMAGE_WIDTH,
+    aspectRatio: ASPECT_RATIO,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
   },
 });
