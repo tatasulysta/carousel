@@ -1,6 +1,7 @@
 # Carousel 👋
 
-[]
+Preview
+![](https://github.com/tatasulysta/carousel/blob/main/demo.gif)<br/>
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started
@@ -36,6 +37,8 @@ npm run reset-project
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
+### Note
+This application was primarily developed and tested using Android emulator to validate its core functionality and behavior. Although the testing environment was Android-specific, the development process focused on ensuring responsiveness and adaptability across different screen sizes and resolution. To achieve this, the application were designed using relative dimensions derived from the device's screen size, such as percentages of the screen width and height.
 ## Process
 
 Using the react-native-reanimated library to optimized the feature by using:
