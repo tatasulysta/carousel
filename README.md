@@ -1,5 +1,6 @@
-# Welcome to your Expo app 👋
+# Carousel 👋
 
+[]
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started
@@ -35,16 +36,32 @@ npm run reset-project
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
-## Learn more
+## Process
 
-To learn more about developing your project with Expo, look at the following resources:
+Using the react-native-reanimated library to optimized the feature by using:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- useSharedValue to manage animation states for 2 specific state which is offset (track down scroll offset) and expand (to manage expand state).
+- interpolate to calculate scale transformations of card
+- useAnimatedStyle to compute scale, width, height, and etc.
+- withTiming to add smooth transition
+  with useSharedValue and useAnimatedStyle efficiently avoid unecessary re-renders of the component
 
-## Join the community
+Issue encountered
+While most of the process goes smoothly there are issues encountered during the development:
 
-Join our community of developers creating universal apps.
+- Padding horizontal<br/>
+  issue: The last item in the carousel was not fully visible due to the paddingHorizontal.<br/>
+  - Replaced paddingHorizontal with paddingEnd to ensure proper spacing while preventing clipping the last item.
+  - Adjusted the left and right properties in the expandStyle animation to ensure these changes and the expanded card aligns correctly.
+- Unwanted expansion of the non-centered card <br/>
+  issue: non-centered card can be expanded if pressed <br/>
+  solve:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+  - Calculated card scale value using the interpolate function.<br/>
+  - Verified the card scale is greater than 0.99 before allowing it to expand, to ensure only the focused card can be expand.
+
+- Avoid scrolling on expand state <br/>
+  issue: User can scroll while on of the card is on expand state <br/>
+  solve:<br/>
+  - By adding an overlay layer, we ensure that user interactions outside the expanded card are detected, allowing the expansion to close automatically when the screen is tapped. This approach simplifies the logic by delegating the collapse functionality to the overlay's press handler.
+  - The current close button is included purely for UX purposes, providing indication of a close action, but it does not have an actual press handler in the implementaion. The overlay takes full responsibility for handling the collapse functionality.

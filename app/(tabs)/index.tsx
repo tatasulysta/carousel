@@ -5,123 +5,148 @@ import {
   View,
   ImageSourcePropType,
   TouchableWithoutFeedback,
+  TouchableOpacity,
+  Text,
 } from "react-native";
 import Animated, {
-  Extrapolation,
-  interpolate,
-  SharedValue,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
   useSharedValue,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+  useAnimatedScrollHandler,
   withTiming,
 } from "react-native-reanimated";
 
 const { width: wWidth, height: wHeight } = Dimensions.get("window");
-const ASPECT_RATIO = 3 / 5;
+
 const IMAGE_WIDTH = wWidth * 0.7;
-const IMAGE_HEIGHT = wHeight * ASPECT_RATIO;
+const IMAGE_HEIGHT = IMAGE_WIDTH * 1.2;
 const DEFAULT_SPACING = 20;
 
-type ImageType = {
+const ITEMS = [
+  { id: "1", source: require("@/assets/images/image-1.jpg") },
+  { id: "2", source: require("@/assets/images/image-2.jpg") },
+  { id: "3", source: require("@/assets/images/image-3.jpg") },
+  { id: "4", source: require("@/assets/images/image-4.jpg") },
+  { id: "5", source: require("@/assets/images/image-5.jpg") },
+];
+
+type ImageCardProps = {
+  expand: Animated.SharedValue<number>;
+  offset: Animated.SharedValue<number>;
+  toggleExpand: (idx: number) => void;
   source: ImageSourcePropType;
-  offset: SharedValue<number>;
   index: number;
 };
 
-function ImageItem(props: ImageType) {
-  const { source, offset, index } = props;
-  const isExpanded = useSharedValue(false);
+function ImageCard(props: ImageCardProps) {
+  const { source, index, offset, toggleExpand, expand } = props;
 
-  const imageStyle = useAnimatedStyle(() => {
-    //SCROLL SCALING
+  const animatedStyle = useAnimatedStyle(() => {
     const scale = interpolate(
       offset.value,
       [index - 1, index, index + 1],
-      [1, 1.3, 1],
+      [0.8, 1, 0.8],
       Extrapolation.CLAMP,
     );
 
-    // EXPAND
-    const height = isExpanded.value
-      ? withTiming(wHeight * 0.7)
-      : withTiming(IMAGE_HEIGHT);
-
-    const width = isExpanded.value
-      ? withTiming(wWidth * 0.9)
-      : withTiming(IMAGE_WIDTH);
-
     return {
       transform: [{ scale }],
-      width,
-      height,
+    };
+  });
+
+  const expandStyle = useAnimatedStyle(() => {
+    const isExpand = expand.value === index;
+    return {
+      width: isExpand ? withTiming(wWidth) : withTiming(IMAGE_WIDTH),
+      height: isExpand ? withTiming(wHeight) : withTiming(IMAGE_HEIGHT),
+      left: isExpand ? withTiming(0) : withTiming((wWidth - IMAGE_WIDTH) / 2),
+      right: isExpand ? withTiming(0) : withTiming((wWidth - IMAGE_WIDTH) / 2),
+    };
+  });
+
+  const imageStyle = useAnimatedStyle(() => {
+    const isExpand = expand.value === index;
+    return { borderRadius: isExpand ? withTiming(0) : withTiming(12) };
+  });
+
+  const buttonStyle = useAnimatedStyle(() => {
+    const isExpand = expand.value === index;
+    return {
+      opacity: withTiming(isExpand ? 1 : 0, { duration: 200 }),
+      position: "absolute",
+      top: 16,
+      right: 16,
     };
   });
 
   return (
-    <TouchableWithoutFeedback
-      onPress={() => {
-        isExpanded.value = !isExpanded.value;
-      }}
-    >
-      <View style={styles.imageContainer}>
+    <TouchableWithoutFeedback onPress={() => toggleExpand(index)}>
+      <Animated.View style={[styles.cardContainer, animatedStyle, expandStyle]}>
         <Animated.Image
           source={source}
-          style={[styles.image, imageStyle]}
+          style={[styles.cardImage, imageStyle]}
           resizeMode="cover"
         />
-      </View>
+
+        <Animated.View style={[buttonStyle]}>
+          <TouchableOpacity onPress={() => toggleExpand(-1)}>
+            <Text style={{ fontSize: 22 }}>X</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </Animated.View>
     </TouchableWithoutFeedback>
   );
 }
 
-const ITEMS = [
-  {
-    id: "e",
-    source: require("@/assets/images/image-1.jpg"),
-  },
-  {
-    id: "2",
-    source: require("@/assets/images/image-2.jpg"),
-  },
-  {
-    id: "3",
-    source: require("@/assets/images/image-3.jpg"),
-  },
-  {
-    id: "4",
-    source: require("@/assets/images/image-4.jpg"),
-  },
-  {
-    id: "5",
-    source: require("@/assets/images/image-5.jpg"),
-  },
-];
-
 export default function HomeScreen() {
   const offset = useSharedValue(0);
-  const expandedIndex = useSharedValue(-1);
-
-  const setExpandedIndex = (index: number) => {
-    expandedIndex.value = expandedIndex.value === index ? -1 : index; // Toggle
-  };
+  const expand = useSharedValue(-1);
 
   const onScroll = useAnimatedScrollHandler((event) => {
     offset.value = event.contentOffset.x / (IMAGE_WIDTH + DEFAULT_SPACING);
   });
 
+  const toggleExpand = (index: number) => {
+    const scale = interpolate(
+      offset.value,
+      [index - 1, index, index + 1],
+      [0.8, 1, 0.8],
+      Extrapolation.CLAMP,
+    );
+
+    if (scale >= 0.99) expand.value = expand.value === index ? -1 : index;
+  };
+
+  const overlayStyle = useAnimatedStyle(() => {
+    return {
+      opacity: expand.value > -1 ? 1 : 0,
+      zIndex: expand.value > -1 ? 9 : 0,
+    };
+  });
+
   return (
     <View style={styles.container}>
+      {/* OVERLAYER FOR DETECT SCROLL */}
+      <TouchableWithoutFeedback onPress={() => (expand.value = -1)}>
+        <Animated.View style={[styles.overlay, overlayStyle]} />
+      </TouchableWithoutFeedback>
       <Animated.FlatList
         data={ITEMS}
         horizontal
-        keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
-          <ImageItem source={item.source} offset={offset} index={index} />
+          <ImageCard
+            source={item.source}
+            index={index}
+            offset={offset}
+            toggleExpand={toggleExpand}
+            expand={expand}
+          />
         )}
+        keyExtractor={(item) => item.id}
         snapToInterval={IMAGE_WIDTH + DEFAULT_SPACING}
         decelerationRate="fast"
-        contentContainerStyle={styles.listContent}
-        style={styles.list}
+        contentContainerStyle={styles.carouselContent}
         onScroll={onScroll}
         scrollEventThrottle={16}
         showsHorizontalScrollIndicator={false}
@@ -133,25 +158,25 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#000",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#000",
+    flexDirection: "row",
+    position: "relative",
   },
-  listContent: {
+  carouselContent: {
     gap: DEFAULT_SPACING,
-    paddingRight: DEFAULT_SPACING,
+    // paddingHorizontal: DEFAULT_SPACING,
+    paddingEnd: wWidth - IMAGE_WIDTH,
   },
-  list: {
-    flexGrow: 0,
-  },
-  imageContainer: {
+  cardContainer: {
     width: IMAGE_WIDTH,
-    aspectRatio: ASPECT_RATIO,
-    borderRadius: 12,
+    height: IMAGE_HEIGHT,
     overflow: "hidden",
   },
-  image: {
+  cardImage: {
     width: "100%",
     height: "100%",
   },
+  overlay: StyleSheet.absoluteFillObject,
 });
